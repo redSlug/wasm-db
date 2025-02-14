@@ -34,10 +34,10 @@
                 console.log(res);
             };
 
-            function dbExecCustom(script){
+            function dbExecCustom(command){
                 let res = [];
                 db.exec({
-                    sql: "script",
+                    sql: command,
                     rowMode: 'object',
                     callback: function(row){res.push(row);}
                 });
