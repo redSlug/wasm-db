@@ -5,7 +5,7 @@ Example of running a db in a web browser
 
 ```bash
 # bring up server
-python -m http.server 8001
+npm run dev
 ```
 Visit
 http://localhost:8001/
