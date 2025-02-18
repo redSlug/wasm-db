@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html xmlns="http://www.w3.org/1999/html">
     <head>
         <meta charset="UTF-8">
         <script src="sqlite3.js"></script>
@@ -8,12 +8,14 @@
         <p>test copy db to local storage</p>
         <script src="save_to_indexeddb.js"></script>
         <script>
-            window.sqlite3InitModule().then(function(sqlite3){
-                window.sqlite3 = sqlite3;
+            const dbFileNameKey = 'dbFileName';
+            const exampleDbFileNameKey = 'example.sqlite';
+
+            function insideInitOriginalDB(){
                 function initdb(buffer){
                     window.db = new sqlite3.oo1.DB();
-                    console.log(db);
-                        sqlite3.capi.sqlite3_deserialize(
+                    console.log("======> old db", db);
+                    sqlite3.capi.sqlite3_deserialize(
                         db.pointer, 'main',
                         sqlite3.wasm.allocFromTypedArray(buffer),
                         buffer.byteLength,
@@ -22,9 +24,25 @@
                     );
                 };
                 fetch("samples.sqlite")
-                .then(res => res.arrayBuffer())
-                .then(buffer => {initdb(buffer)});
-            });
+                    .then(res => {
+                        const resArray = res.arrayBuffer()
+                        console.log('===> res array', resArray)
+                        console.log('===> typeof res array', typeof resArray)
+                        return resArray;
+                    })
+                    .then(buffer => {initdb(buffer)});
+            }
+
+
+
+            function initializeInitialDb(){
+                window.sqlite3InitModule().then(function(sqlite3){
+                    window.sqlite3 = sqlite3;
+                    // insideInitOriginalDB()
+                });
+            }
+
+            initializeInitialDb()
 
             async function cpDb(){
                 // origin private file system root; opfs allows us to do read and write
@@ -42,6 +60,132 @@
                 );
                 console.log('nestedFileHandle', nestedFileHandle);
             };
+            async function readFile(){
+                console.log('getting file name key');
+                const fileName = localStorage.getItem(dbFileNameKey);
+                console.log('got file name key', fileName);
+
+
+                console.log('readFile', fileName);
+
+                // 1. Access OPFS root directory
+                const root = await navigator.storage.getDirectory();
+
+                // 2. Generate a unique filename (UUID-based)
+
+
+                // 3. Create a file handle
+                console.log('reading file handle', fileName);
+
+                const fileHandle = await root.getFileHandle(fileName);
+                console.log('getting file', fileHandle);
+                const data = await fileHandle.getFile();
+                console.log('got file', data.text());
+
+            }
+
+            async function saveUniqueFile(content) {
+                // Check for OPFS support
+                if (!('storage' in navigator && 'getDirectory' in navigator.storage)) {
+                    console.error('OPFS is not supported in this browser.');
+                    return;
+                }
+                console.log('going to save');
+
+                try {
+                    // 1. Access OPFS root directory
+                    const root = await navigator.storage.getDirectory();
+
+                    // 2. Generate a unique filename (UUID-based)
+                    const filename = `document_${crypto.randomUUID()}.txt`;
+
+
+                    // safe file name to localstorage to read function will know handle to use to optn
+                    localStorage.setItem(dbFileNameKey, filename);
+
+
+                    // 3. Create a file handle
+                    console.log('creating file handle', filename);
+
+                    const fileHandle = await root.getFileHandle(filename, { create: true });
+
+                    // 4. Write content to the file
+                    console.log('writing contents to file', content);
+
+                    const writableStream = await fileHandle.createWritable();
+                    console.log('got writable stream', content);
+
+                    await writableStream.write(content); // Writes text as UTF-8 by default
+                    console.log('closing stream');
+
+                    await writableStream.close();
+
+                    console.log(`File "${filename}" saved successfully.`);
+                } catch (error) {
+                    console.error('Error saving file:', error);
+                }
+            }
+
+
+            async function saveDbToOPFS() {
+                // Check for OPFS support
+                if (!('storage' in navigator && 'getDirectory' in navigator.storage)) {
+                    console.error('OPFS is not supported in this browser.');
+                    return;
+                }
+                console.log('going to save');
+
+                try {
+                    // 1. Access OPFS root directory
+                    const root = await navigator.storage.getDirectory();
+
+
+
+                    // 3. Create a file handle
+                    console.log('creating file handle', exampleDbFileNameKey);
+
+                    const fileHandle = await root.getFileHandle(exampleDbFileNameKey, { create: true });
+
+                    // 4. Write content to the file
+                    console.log('writing contents to file');
+
+                    const writableStream = await fileHandle.createWritable();
+                    console.log('got writable stream');
+
+                    const result = await fetch("samples.sqlite")
+
+
+
+                    // const arrayBuffer = result.arrayBuffer();
+                    // console.log('got array buffer, result', arrayBuffer);
+                    // // Create Uint8Array view of the ArrayBuffer
+                    // const uint8Array = new Uint8Array(arrayBuffer);
+                    // let offset = 0;
+                    // // Write in chunks
+                    // while (offset < uint8Array.length) {
+                    //     // Calculate chunk boundaries
+                    //     const end = Math.min(offset + chunkSize, uint8Array.length);
+                    //     const chunk = uint8Array.subarray(offset, end);
+                    //     // Write the chunk
+                    //     await writableStream.write(chunk);
+                    //     // Update offset
+                    //     offset = end;
+                    //     // Optional: report progress
+                    //     console.log(`Written ${offset} of ${uint8Array.length} bytes`);
+                    // }
+                    // // await writableStream.write(resultBuffer); // Writes text as UTF-8 by default
+                    const resBlob = await result.blob()
+                    console.log('writing result blob', resBlob)
+                    const writeresult = writableStream.write(resBlob);
+
+                    console.log('wrote closing stream result=', writeresult);
+                    await writableStream.close();
+
+                    console.log(`File "${exampleDbFileNameKey}" saved successfully.`);
+                } catch (error) {
+                    console.error('Error saving file:', error);
+                }
+            }
 
 
             function dbExec(){
@@ -63,8 +207,57 @@
                 });
                 console.log(res);
             };
+
+            async function initializeNewDBInOPFS(){
+                async function initNewdb(buffer){
+                    window.newdb = new sqlite3.oo1.DB();
+                    console.log("new db attached to window");
+                    console.log("======> newdb", newdb);
+
+
+                    sqlite3.capi.sqlite3_deserialize(
+                        newdb.pointer, 'main',
+                        sqlite3.wasm.allocFromTypedArray(buffer),
+                        buffer.byteLength,
+                        buffer.byteLength,
+                        sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE
+                    );
+                };
+                console.log('readFile');
+                const root = await navigator.storage.getDirectory();
+                console.log('reading file handle', exampleDbFileNameKey);
+                const fileHandle = await root.getFileHandle(exampleDbFileNameKey);
+                console.log('getting file', fileHandle);
+                const data = await fileHandle.getFile();
+                console.log('got file, running init db with data', data);
+                const arrayB = new ArrayBuffer(data)
+                // const arrayB = data.arrayBuffer()
+                console.log('===> array buffer', arrayB);
+                console.log('===> type of array buffer', typeof arrayB);
+
+                initNewdb(arrayB);
+            }
+
+
+            function newDbExec(){
+                let res = [];
+                newdb.exec({
+                    sql: "CREATE TABLE hello (world text);",
+                    rowMode: 'object',
+                    callback: function(row){res.push(row);}
+                });
+                console.log(res);
+            };
+
+
         </script>
         <button onclick="cpDb()">Click Me</button>
+    <button onclick="saveUniqueFile('yoo')">save file</button>
+    <button onclick="readFile()">read OPFS file</button>
+        <button onclick="saveDbToOPFS()">save db</button>
+        <button onclick="initializeNewDBInOPFS()">initialize new db</button>
+        <button onclick="newDbExec()">exec new db</button>
+
 
     </body>
 </html>
