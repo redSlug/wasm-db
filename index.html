@@ -60,6 +60,8 @@
                 );
                 console.log('nestedFileHandle', nestedFileHandle);
             };
+
+
             async function readFile(){
                 console.log('getting file name key');
                 const fileName = localStorage.getItem(dbFileNameKey);
@@ -251,10 +253,10 @@
 
 
         </script>
-        <button onclick="cpDb()">Click Me</button>
-    <button onclick="saveUniqueFile('yoo')">save file</button>
+        <button onclick="cpDb()">Click Me to create empty db file in OPFS</button>
+    <button onclick="saveUniqueFile('yoo')">save unique random fileNAme to localstorage and save file with FileName to OPFS</button>
     <button onclick="readFile()">read OPFS file</button>
-        <button onclick="saveDbToOPFS()">save db</button>
+        <button onclick="saveDbToOPFS()">saveDbToOPFS db to file</button>
         <button onclick="initializeNewDBInOPFS()">initialize new db</button>
         <button onclick="newDbExec()">exec new db</button>
 
